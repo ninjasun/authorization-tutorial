@@ -1,77 +1,76 @@
-const jwt = require('json-web-token')
+var jwt = require("jsonwebtoken");
 
 // Never do this!
 let users = {
-    john: {password: "passwordjohn"},
-    mary: {password:"passwordmary"}
-}
+  john: { password: "passwordjohn" },
+  mary: { password: "passwordmary" },
+};
 
-exports.login = function(req, res){
+exports.login = (req, res) => {
+  const username = req.body.username;
+  const password = req.body.password;
 
-    let username = req.body.username
-    let password = req.body.password
-    
-    // Neither do this!
-    if (!username || !password || users[username].password !== password){
-        return res.status(401).send()
-    }
+  console.log("API login username: ", username);
+  console.log("API login password: ", password);
 
-    //use the payload to store information about the user such as username, user role, etc.
-    let payload = {username: username}
+  // Neither do this!
+  if (!username || !password || users[username].password !== password) {
+    return res.status(401).send();
+  }
 
-    //create the access token with the shorter lifespan
-    let accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
-        algorithm: "HS256",
-        expiresIn: process.env.ACCESS_TOKEN_LIFE
-    })
+  //use the payload to store information about the user such as username, user role, etc.
+  let payload = { username: username };
 
-    //create the refresh token with the longer lifespan
-    let refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
-        algorithm: "HS256",
-        expiresIn: process.env.REFRESH_TOKEN_LIFE
-    })
+  //create the access token with the shorter lifespan
+  let accessToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
+    algorithm: "HS256",
+    expiresIn: process.env.ACCESS_TOKEN_LIFE,
+  });
 
-    //store the refresh token in the user array
-    users[username].refreshToken = refreshToken
+  //create the refresh token with the longer lifespan
+  let refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET, {
+    algorithm: "HS256",
+    expiresIn: process.env.REFRESH_TOKEN_LIFE,
+  });
 
-    //send the access token to the client inside a cookie
-    res.cookie("jwt", accessToken, {secure: true, httpOnly: true})
-    res.send()
-}
+  //store the refresh token in the user array
+  users[username].refreshToken = refreshToken;
 
-exports.refresh = function (req, res){
+  //send the access token to the client inside a cookie
+  console.log("SEND token: ", accessToken);
+  //res.cookie("jwt", accessToken, {secure: true, httpOnly: true})
+  res.status(200).send(accessToken);
+};
 
-    let accessToken = req.cookies.jwt
+exports.refresh = function (req, res) {
+  let accessToken = req.cookies.jwt;
 
-    if (!accessToken){
-        return res.status(403).send()
-    }
+  if (!accessToken) {
+    return res.status(403).send();
+  }
 
-    let payload
-    try{
-        payload = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET)
-     }
-    catch(e){
-        return res.status(401).send()
-    }
+  let payload;
+  try {
+    payload = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+  } catch (e) {
+    return res.status(401).send();
+  }
 
-    //retrieve the refresh token from the users array
-    let refreshToken = users[payload.username].refreshToken
+  //retrieve the refresh token from the users array
+  let refreshToken = users[payload.username].refreshToken;
 
-    //verify the refresh token
-    try{
-        jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
-    }
-    catch(e){
-        return res.status(401).send()
-    }
+  //verify the refresh token
+  try {
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+  } catch (e) {
+    return res.status(401).send();
+  }
 
-    let newToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, 
-    {
-        algorithm: "HS256",
-        expiresIn: process.env.ACCESS_TOKEN_LIFE
-    })
+  let newToken = jwt.sign(payload, process.env.ACCESS_TOKEN_SECRET, {
+    algorithm: "HS256",
+    expiresIn: process.env.ACCESS_TOKEN_LIFE,
+  });
 
-    res.cookie("jwt", newToken, {secure: true, httpOnly: true})
-    res.send()
-}
+  res.cookie("jwt", newToken, { secure: true, httpOnly: true });
+  res.send();
+};
